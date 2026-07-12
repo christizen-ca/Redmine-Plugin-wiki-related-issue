@@ -1,0 +1,68 @@
+<% default_show = Setting.plugin_redmine_wiki_related_issues['default_show_related_issues'] != '0' %>
+<script>
+$(function() {
+  // Checkbox logic for related issues
+  var form = $('#wiki_form');
+  var textarea = $('#content_text');
+  var defaultShow = <%= default_show ? 'true' : 'false' %>;
+  
+  if (form.length > 0 && textarea.length > 0) {
+    var p = $('<p></p>');
+    var label = $('<label for="show_related_issues_chk"></label>').text('연관된 일감 출력');
+    var chk = $('<input type="checkbox" id="show_related_issues_chk" />');
+    p.append(label).append(chk);
+    
+    var draftForm = $('#wiki_approval_draft_form');
+    var fieldset = form.find('fieldset').first();
+    
+    if (draftForm.length > 0) {
+      draftForm.after(p);
+    } else if (fieldset.length > 0) {
+      fieldset.before(p);
+    } else {
+      form.find('p:has(input[type=submit])').before(p);
+    }
+    
+    var content = textarea.val() || '';
+    
+    // Determine initial checkbox state
+    var isChecked = defaultShow;
+    if (content.indexOf('{{no_related_issues}}') !== -1) {
+      isChecked = false;
+      textarea.val(content.replace(/\{\{no_related_issues\}\}\n?/g, '').trim());
+    } else if (content.indexOf('{{show_related_issues}}') !== -1) {
+      isChecked = true;
+      textarea.val(content.replace(/\{\{show_related_issues\}\}\n?/g, '').trim());
+    } else if (content.indexOf('{{related_issues}}') !== -1) {
+      isChecked = true;
+      textarea.val(content.replace(/\{\{related_issues\}\}\n?/g, '').trim());
+    }
+    
+    chk.prop('checked', isChecked);
+    
+    function applyMacro() {
+      var currentContent = textarea.val();
+      currentContent = currentContent.replace(/\{\{no_related_issues\}\}\n?/g, '').trim();
+      currentContent = currentContent.replace(/\{\{show_related_issues\}\}\n?/g, '').trim();
+      currentContent = currentContent.replace(/\{\{related_issues\}\}\n?/g, '').trim();
+      
+      if (defaultShow) {
+        if (!chk.is(':checked')) {
+          currentContent += '\n\n{{no_related_issues}}\n';
+        }
+      } else {
+        if (chk.is(':checked')) {
+          currentContent += '\n\n{{show_related_issues}}\n';
+        }
+      }
+      textarea.val(currentContent);
+    }
+
+    // Intercept form submission
+    form.on('submit', applyMacro);
+    
+    // Intercept preview button
+    form.find('a[accesskey=r], a.preview, a.icon-preview').on('mousedown', applyMacro);
+  }
+});
+</script>

@@ -1,0 +1,5 @@
+<p>
+  <label for="settings_default_show_related_issues">Show Related Issues by default</label>
+  <%= hidden_field_tag 'settings[default_show_related_issues]', 0 %>
+  <%= check_box_tag 'settings[default_show_related_issues]', 1, @settings['default_show_related_issues'] != '0' %>
+</p>

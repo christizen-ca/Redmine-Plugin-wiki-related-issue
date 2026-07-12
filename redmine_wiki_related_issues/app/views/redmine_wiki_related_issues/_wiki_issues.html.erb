@@ -1,0 +1,69 @@
+<%
+  return unless controller.controller_name == 'wiki' && controller.action_name == 'show'
+  return unless @page && @page.title.present?
+
+  default_show = Setting.plugin_redmine_wiki_related_issues['default_show_related_issues'] != '0'
+  has_no_issues_macro = @page.content && @page.content.text.include?('{{no_related_issues}}')
+  has_show_issues_macro = @page.content && @page.content.text.include?('{{show_related_issues}}')
+
+  if default_show
+    return if has_no_issues_macro
+  else
+    return unless has_show_issues_macro
+  end
+
+  require 'cgi'
+  title_down = @page.title.downcase
+  title_space = @page.title.tr('_', ' ').downcase
+  title_encoded = CGI.escape(@page.title).downcase
+
+  @related_issues = Issue.where("LOWER(issues.description) LIKE ? OR LOWER(issues.description) LIKE ? OR LOWER(issues.description) LIKE ?", 
+                                "%[[#{title_down}]]%",
+                                "%[[#{title_space}]]%",
+                                "%/wiki/#{title_encoded}%")
+                         .visible
+%>
+
+<% if @related_issues.any? %>
+  <div id="wiki_related_issues_container" style="display: none;">
+    <hr />
+    <div id="issue_tree">
+      <div class="contextual">
+      </div>
+      <p><strong>Related issues</strong></p>
+      <form>
+        <table class="list issues odd-even">
+          <tbody>
+            <% @related_issues.each do |issue| %>
+              <tr id="issue-<%= issue.id %>" class="hascontextmenu <%= issue.css_classes %>">
+                <td class="checkbox hide-when-print"><input type="checkbox" name="ids[]" value="<%= issue.id %>"></td>
+                <td class="subject">
+                  <% if issue.closed? %>
+                    <del><%= link_to "##{issue.id}: #{issue.subject}", issue_path(issue) %></del>
+                  <% else %>
+                    <%= link_to "##{issue.id}: #{issue.subject}", issue_path(issue) %>
+                  <% end %>
+                </td>
+                <td class="status"><%= issue.status.name %></td>
+                <td class="assignee"><%= issue.assigned_to %></td>
+                <td class="updated_on"><%= format_time(issue.updated_on) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      var container = document.getElementById("wiki_related_issues_container");
+      var target = document.querySelector("div.wiki-page") || document.querySelector("div.wiki") || document.getElementById("content");
+      
+      if (container && target) {
+        target.appendChild(container);
+        container.style.display = "block";
+      }
+    });
+  </script>
+<% end %>

@@ -17,11 +17,30 @@
   title_space = @page.title.tr('_', ' ').downcase
   title_encoded = CGI.escape(@page.title).downcase
 
-  @related_issues = Issue.where("LOWER(issues.description) LIKE ? OR LOWER(issues.description) LIKE ? OR LOWER(issues.description) LIKE ?", 
-                                "%[[#{title_down}]]%",
-                                "%[[#{title_space}]]%",
-                                "%/wiki/#{title_encoded}%")
-                         .visible
+  description_conds = [
+    "LOWER(issues.description) LIKE ? OR LOWER(issues.description) LIKE ? OR LOWER(issues.description) LIKE ? OR LOWER(issues.description) LIKE ? OR LOWER(issues.description) LIKE ?",
+    "%[[#{title_down}]]%",
+    "%[[#{title_down}|%",
+    "%[[#{title_space}]]%",
+    "%[[#{title_space}|%",
+    "%/wiki/#{title_encoded}%"
+  ]
+
+  journal_conds = [
+    "LOWER(journals.notes) LIKE ? OR LOWER(journals.notes) LIKE ? OR LOWER(journals.notes) LIKE ? OR LOWER(journals.notes) LIKE ? OR LOWER(journals.notes) LIKE ?",
+    "%[[#{title_down}]]%",
+    "%[[#{title_down}|%",
+    "%[[#{title_space}]]%",
+    "%[[#{title_space}|%",
+    "%/wiki/#{title_encoded}%"
+  ]
+
+  issue_ids = Issue.where(description_conds).pluck(:id)
+  journal_issue_ids = Journal.where(journalized_type: 'Issue')
+                             .where(journal_conds)
+                             .pluck(:journalized_id)
+
+  @related_issues = Issue.where(id: (issue_ids + journal_issue_ids).uniq).visible
 %>
 
 <% if @related_issues.any? %>
